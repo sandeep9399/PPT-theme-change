@@ -1,4 +1,3 @@
-x
 import streamlit as st
 from pptx import Presentation
 from pptx.util import Inches

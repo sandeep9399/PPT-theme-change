@@ -1,12 +1,10 @@
-
+x
 import streamlit as st
 from pptx import Presentation
 from pptx.util import Inches
-from pptx.dml.color import RGBColor
 import io
 
-LOGO_FILE = "apollo_logo.png"
-THEME_FILE = "apollo_theme.pptx"
+THEME_FILE = "apollo_theme_with_logo_footer.pptx"
 
 def choose_best_layout(layouts, num_shapes):
     if num_shapes <= 2:
@@ -19,18 +17,14 @@ def choose_best_layout(layouts, num_shapes):
 def copy_shapes(source_slide, dest_slide):
     for shape in source_slide.shapes:
         if shape.shape_type == 1 and shape.has_text_frame:
-            left = shape.left
-            top = shape.top
-            width = shape.width
-            height = shape.height
-            new_shape = dest_slide.shapes.add_textbox(left, top, width, height)
+            new_shape = dest_slide.shapes.add_textbox(shape.left, shape.top, shape.width, shape.height)
             new_shape.text = shape.text
         elif shape.shape_type == 13:  # picture
             image_stream = io.BytesIO(shape.image.blob)
             dest_slide.shapes.add_picture(image_stream, shape.left, shape.top, shape.width, shape.height)
-        elif shape.shape_type == 6 and shape.chart:  # chart
+        elif shape.shape_type == 6 and shape.chart:
             continue
-        elif shape.shape_type == 19:  # table
+        elif shape.shape_type == 19:
             continue
 
 def apply_apollo_theme(uploaded_pptx):
@@ -38,23 +32,16 @@ def apply_apollo_theme(uploaded_pptx):
     theme_ppt = Presentation(THEME_FILE)
     layouts = theme_ppt.slide_layouts
 
-    output_ppt = Presentation()
-    output_ppt.slide_width = source_ppt.slide_width
-    output_ppt.slide_height = source_ppt.slide_height
+    output_ppt = Presentation(THEME_FILE)  # Start with Apollo theme
+    while len(output_ppt.slides) > 0:
+        r_id = output_ppt.slides._sldIdLst[0].rId
+        del output_ppt.part.rels[r_id]
+        del output_ppt.slides._sldIdLst[0]
 
     for slide in source_ppt.slides:
         layout = choose_best_layout(layouts, len(slide.shapes))
         new_slide = output_ppt.slides.add_slide(layout)
         copy_shapes(slide, new_slide)
-
-        slide_width = output_ppt.slide_width
-        logo_width = Inches(1.2)
-        logo_height = Inches(0.6)
-        new_slide.shapes.add_picture(LOGO_FILE, slide_width - logo_width - Inches(0.2), Inches(0.2), logo_width, logo_height)
-
-        textbox = new_slide.shapes.add_textbox(Inches(0.5), Inches(6.5), Inches(8), Inches(0.3))
-        textbox.text = "Powered by Apollo Knowledge"
-        textbox.text_frame.paragraphs[0].font.size = Inches(0.15)
 
     output = io.BytesIO()
     output_ppt.save(output)
